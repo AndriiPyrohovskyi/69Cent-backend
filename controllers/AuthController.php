@@ -8,6 +8,6 @@ class AuthController {
     }
 
     public function register() {
-        echo "Hello World from register!!";
+        echo "Hello World from register!!!";
 }
 ?>
