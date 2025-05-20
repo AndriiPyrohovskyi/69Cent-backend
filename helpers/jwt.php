@@ -5,8 +5,8 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 function generateJWT($userId, $username, $role) {
     $payload = [
-        'iss' => 'http://69cent.local',
-        'aud' => 'http://69cent.local',
+        'iss' => 'http://69centapi.local',
+        'aud' => 'http://69centapi.local',
         'iat' => time(),
         'exp' => time() + 3600,
         'data' => [
@@ -22,7 +22,8 @@ function generateJWT($userId, $username, $role) {
 
 function verifyJWT($token) {
     try {
-        $decoded = JWT::decode($token, new Key('your_super_secret_key', 'HS256'));
+        $secretKey = $_ENV['JWT_SECRET']; 
+        $decoded = JWT::decode($token, new Key($secretKey, 'HS256'));
         return $decoded->data;
     } catch (Exception $e) {
         return null;

@@ -69,5 +69,29 @@ class AuthController {
             echo json_encode(['error' => 'Database error: ' . $e->getMessage()]);
         }
     }
+    public function get_current_user() {
+        header('Content-Type: application/json');
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+        if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            $token = $matches[1];
+            $user_data = verifyJWT($token);
+            if ($user_data) {
+                http_response_code(200);
+                echo json_encode([
+                    'id' => $user_data->id,
+                    'username' => $user_data->username,
+                    'role' => $user_data->role,
+                ]);
+                return;
+            } else {
+                http_response_code(401);
+                echo json_encode(['message' => 'Недійсний токен']);
+                return;
+            }
+        }
+        http_response_code(401);
+        echo json_encode(['message' => 'Токен не надано']);
+    }
 }
 ?>

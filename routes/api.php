@@ -19,6 +19,9 @@ switch ($uri) {
     case '/api/login':
         $authController->login();
         break;
+    case '/api/current_user':
+        $authController->get_current_user();
+        break;
 
     default:
         http_response_code(404);
