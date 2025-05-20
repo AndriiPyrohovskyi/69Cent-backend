@@ -93,5 +93,33 @@ class AuthController {
         http_response_code(401);
         echo json_encode(['message' => 'Токен не надано']);
     }
+    public function refresh_token() {
+        header('Content-Type: application/json');
+        $headers = getallheaders();
+        $authHeader = $headers['Authorization'] ?? '';
+    
+        if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            $token = $matches[1];
+            $user_data = verifyJWT($token);
+    
+            if ($user_data) {
+                $newToken = generateJWT($user_data->id, $user_data->username, $user_data->role);
+                http_response_code(200);
+                echo json_encode(['token' => $newToken]);
+                return;
+            }
+        }
+    
+        http_response_code(401);
+        echo json_encode(['message' => 'Не вдалося оновити токен']);
+    }
+    public function logout() {
+        session_start();
+        session_unset();
+        session_destroy();
+        setcookie(session_name(), '', time() - 3600, '/'); // Видаляємо cookie сесії
+        http_response_code(200);
+        echo json_encode(['message' => 'Вихід виконано успішно']);
+    }
 }
 ?>

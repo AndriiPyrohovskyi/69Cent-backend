@@ -13,7 +13,7 @@ function generateJWT($userId, $username, $role) {
             'id' => $userId,
             'username' => $username,
             'role' => $role
-        ]
+        ]   
     ];
 
     $secretKey = $_ENV['JWT_SECRET']; 
