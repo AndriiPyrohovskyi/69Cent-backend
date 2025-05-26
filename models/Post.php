@@ -45,7 +45,7 @@ class Post {
                 SUM(like_types.carma) AS author_сarma
             FROM posts
             JOIN categories ON posts.category_id = categories.id
-            JOIN users ON posts.id IN (SELECT post_id FROM likes WHERE user_id = users.id)
+            JOIN users ON posts.user_id = users.id
             LEFT JOIN likes ON posts.id = likes.post_id
             LEFT JOIN like_types ON likes.like_type_id = like_types.id
             WHERE posts.id = ?

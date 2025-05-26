@@ -25,35 +25,19 @@ class UserController {
 
     public function update($id) {
         try {
-            // Перевіряємо права доступу
-            $currentUserId = null;
-            if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-                $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
-                if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-                    $token = $matches[1];
-                    $userData = verifyJWT($token);
-                    if ($userData) {
-                        $currentUserId = $userData->id;
-                    }
-                }
-            }
+            // Перевіряємо авторизацію користувача
+            $currentUser = $this->getCurrentUser();
             
-            // Тільки користувач може редагувати свій профіль або адміністратор може редагувати будь-який
-            $user = User::getById($this->pdo, $id);
-            if (!$user) {
-                http_response_code(404);
-                echo json_encode(['error' => 'User not found']);
-                return;
-            }
-            
-            $currentUser = User::getById($this->pdo, $currentUserId);
             if (!$currentUser) {
+                error_log("Unauthorized update attempt for user ID: $id");
                 http_response_code(401);
                 echo json_encode(['error' => 'Unauthorized']);
                 return;
             }
             
-            if ($currentUserId != $id && $currentUser['role'] !== 'admin') {
+            // Перевіряємо права: користувач може редагувати лише свій профіль або адмін може редагувати будь-який
+            if ($currentUser->id != $id && $currentUser->role !== 'admin') {
+                error_log("Forbidden update attempt: user ID {$currentUser->id} tried to update user ID $id");
                 http_response_code(403);
                 echo json_encode(['error' => 'Forbidden']);
                 return;
@@ -61,52 +45,26 @@ class UserController {
             
             // Отримуємо дані з запиту
             $data = json_decode(file_get_contents('php://input'), true);
+            error_log("Updating user ID $id with data: " . json_encode($data));
             
-            // Перевіряємо наявність обов'язкових полів
-            if (!isset($data['username']) || !isset($data['email'])) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Username and email are required']);
-                return;
-            }
-            
-            // Перевірка зміни пароля
-            if (isset($data['new_password'])) {
-                if (!isset($data['current_password'])) {
-                    http_response_code(400);
-                    echo json_encode(['error' => 'Current password is required to change password']);
-                    return;
-                }
-                
-                // Перевіряємо поточний пароль
-                if (!password_verify($data['current_password'], $user['password'])) {
-                    http_response_code(400);
-                    echo json_encode(['error' => 'Current password is incorrect']);
-                    return;
-                }
-                
-                // Хешуємо новий пароль
-                $data['password'] = password_hash($data['new_password'], PASSWORD_DEFAULT);
-                
-                // Видаляємо тимчасові поля
-                unset($data['current_password']);
-                unset($data['new_password']);
-            }
-            
-            // Оновлюємо дані користувача
+            // Оновлюємо користувача
             $result = User::update($this->pdo, $id, $data);
             
             if ($result) {
                 // Повертаємо оновлені дані користувача
-                $updatedUser = User::getById($this->pdo, $id);
-                echo json_encode($updatedUser);
+                $user = User::getById($this->pdo, $id);
+                unset($user['password']); // Не повертаємо пароль у відповіді
+                
+                header('Content-Type: application/json');
+                echo json_encode($user);
             } else {
                 http_response_code(400);
-                echo json_encode(['error' => 'Failed to update user data']);
+                echo json_encode(['error' => 'Failed to update user']);
             }
         } catch (Exception $e) {
-            error_log('Error in UserController::update: ' . $e->getMessage());
+            error_log("Error in UserController::update: " . $e->getMessage());
             http_response_code(500);
-            echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+            echo json_encode(['error' => $e->getMessage()]);
         }
     }
 
@@ -130,6 +88,31 @@ class UserController {
             http_response_code(500);
             echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
         }
+    }
+
+    // Допоміжний метод для отримання поточного користувача з JWT токена
+    private function getCurrentUser() {
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+            error_log("Authorization header: " . $authHeader);
+            
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                $token = $matches[1];
+                error_log("Token extracted: " . $token);
+                
+                // Перевірка JWT токена
+                require_once 'utils/jwt_utils.php'; // Переконайтеся, що файл з функцією verifyJWT підключений
+                $userData = verifyJWT($token);
+                
+                error_log("Token verification result: " . json_encode($userData));
+                
+                if ($userData) {
+                    return $userData;
+                }
+            }
+        }
+        
+        return null;
     }
 }
 ?>
