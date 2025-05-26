@@ -155,6 +155,18 @@ switch ($decodedUri) {
         }
         break;
 
+    // Додайте новий маршрут перед блоком default:
+    case '/api/popular_authors':
+        if ($method === 'GET') {
+            // Отримуємо ліміт з URL параметрів
+            $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 5;
+            $userController->getPopularAuthors($limit);
+        } else {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed, use GET']);
+        }
+        break;
+
     default:
         http_response_code(404);
         echo json_encode(['error' => 'Not Found']);

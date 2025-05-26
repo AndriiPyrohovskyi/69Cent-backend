@@ -94,11 +94,6 @@ class PostController {
         try {
             error_log("PostController::like called with postId=$postId, userId=$userId, likeTypeId=$likeTypeId");
             
-            // Очищаємо будь-який попередній вивід
-            // while (ob_get_level()) {
-            //     ob_end_clean();
-            // }
-            
             $result = Post::like($this->pdo, $postId, $userId, $likeTypeId);
             error_log("Post::like result: " . print_r($result, true));
             
@@ -107,6 +102,16 @@ class PostController {
             
             // Перевірка на успішність операції
             if ($result['success']) {
+                // Оновлюємо карму автора поста
+                require_once 'models/User.php';
+                require_once 'models/Post.php';
+                
+                // Отримуємо інформацію про пост, щоб дізнатися автора
+                $post = Post::getById($this->pdo, $postId);
+                if ($post && isset($post['author_id'])) {
+                    User::updateKarma($this->pdo, $post['author_id']);
+                }
+                
                 $jsonResponse = json_encode([
                     'message' => 'Post ' . $result['action'] . ' successfully',
                     'action' => $result['action']
