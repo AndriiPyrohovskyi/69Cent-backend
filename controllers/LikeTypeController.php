@@ -1,6 +1,7 @@
 <?php
 
 require_once 'helpers/response.php';
+require_once 'models/LikeType.php';
 
 class LikeTypeController {
     private $pdo;
@@ -17,9 +18,12 @@ class LikeTypeController {
             return;
         }
 
-        $stmt = $this->pdo->prepare("INSERT INTO like_types (name, carma, icon_url) VALUES (:name, :carma, :icon_url)");
-        $stmt->execute(['name' => $data['name'], 'carma' => $data['carma'], 'icon_url' => $data['icon_url']]);
-        echo json_encode(['message' => 'Like type created']);
+        if (LikeType::create($this->pdo, $data)) {
+            echo json_encode(['message' => 'Like type created']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to create like type']);
+        }
     }
 
     public function update($name) {
@@ -30,25 +34,25 @@ class LikeTypeController {
             return;
         }
 
-        $stmt = $this->pdo->prepare("UPDATE like_types SET name = :new_name, icon_url = :icon_url, carma = :carma WHERE name = :name");
-        $stmt->execute([
-            'new_name' => $data['name'],
-            'icon_url' => $data['icon_url'],
-            'carma' => $data['carma'],
-            'name' => $name
-        ]);
-        echo json_encode(['message' => 'Like type updated']);
+        if (LikeType::update($this->pdo, $name, $data)) {
+            echo json_encode(['message' => 'Like type updated']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to update like type']);
+        }
     }
 
     public function delete($name) {
-        $stmt = $this->pdo->prepare("DELETE FROM like_types WHERE name = :name");
-        $stmt->execute(['name' => $name]);
-        echo json_encode(['message' => 'Like type deleted']);
+        if (LikeType::delete($this->pdo, $name)) {
+            echo json_encode(['message' => 'Like type deleted']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to delete like type']);
+        }
     }
 
     public function getAll() {
-        $stmt = $this->pdo->query("SELECT * FROM like_types");
-        $likeTypes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $likeTypes = LikeType::getAll($this->pdo);
         echo json_encode($likeTypes);
     }
 }

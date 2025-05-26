@@ -1,6 +1,7 @@
 <?php
 
 require_once 'helpers/response.php';
+require_once 'models/Category.php';
 
 class CategoryController {
     private $pdo;
@@ -17,9 +18,12 @@ class CategoryController {
             return;
         }
 
-        $stmt = $this->pdo->prepare("INSERT INTO categories (name) VALUES (:name)");
-        $stmt->execute(['name' => $data['name']]);
-        echo json_encode(['message' => 'Category created']);
+        if (Category::create($this->pdo, $data)) {
+            echo json_encode(['message' => 'Category created']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to create category']);
+        }
     }
 
     public function update($name) {
@@ -29,21 +33,26 @@ class CategoryController {
             echo json_encode(['error' => 'New name is required']);
             return;
         }
-        error_log("Category name: " . $name);
-        $stmt = $this->pdo->prepare("UPDATE categories SET name = :new_name WHERE name = :name");
-        $stmt->execute(['new_name' => $data['new_name'], 'name' => $name]);
-        echo json_encode(['message' => 'Category updated']);
+
+        if (Category::update($this->pdo, $name, $data)) {
+            echo json_encode(['message' => 'Category updated']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to update category']);
+        }
     }
 
     public function delete($name) {
-        $stmt = $this->pdo->prepare("DELETE FROM categories WHERE name = :name");
-        $stmt->execute(['name' => $name]);
-        echo json_encode(['message' => 'Category deleted']);
+        if (Category::delete($this->pdo, $name)) {
+            echo json_encode(['message' => 'Category deleted']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to delete category']);
+        }
     }
 
     public function getAll() {
-        $stmt = $this->pdo->query("SELECT * FROM categories");
-        $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $categories = Category::getAll($this->pdo);
         echo json_encode($categories);
     }
 }

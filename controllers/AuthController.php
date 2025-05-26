@@ -73,16 +73,41 @@ class AuthController {
         header('Content-Type: application/json');
         $headers = getallheaders();
         $authHeader = $headers['Authorization'] ?? '';
+        
         if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
             $token = $matches[1];
             $user_data = verifyJWT($token);
+            
             if ($user_data) {
-                http_response_code(200);
-                echo json_encode([
-                    'id' => $user_data->id,
-                    'username' => $user_data->username,
-                    'role' => $user_data->role,
-                ]);
+                try {
+                    $stmt = $this->pdo->prepare("SELECT id, username, email, role, avatar_url, created_at FROM users WHERE id = :id");
+                    $stmt->execute(['id' => $user_data->id]);
+                    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($user) {
+                        $karmaStmt = $this->pdo->prepare("
+                            SELECT COALESCE(SUM(lt.carma), 0) AS karma
+                            FROM users u
+                            LEFT JOIN posts p ON u.id = p.user_id
+                            LEFT JOIN likes l ON p.id = l.post_id
+                            LEFT JOIN like_types lt ON l.like_type_id = lt.id
+                            WHERE u.id = :user_id
+                            GROUP BY u.id
+                        ");
+                        $karmaStmt->execute(['user_id' => $user_data->id]);
+                        $karmaResult = $karmaStmt->fetch(PDO::FETCH_ASSOC);
+                        $user['karma'] = $karmaResult ? intval($karmaResult['karma']) : 0;
+                        
+                        http_response_code(200);
+                        echo json_encode($user);
+                    } else {
+                        http_response_code(404);
+                        echo json_encode(['message' => 'Користувача не знайдено в базі даних']);
+                    }
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['error' => 'Помилка бази даних: ' . $e->getMessage()]);
+                }
                 return;
             } else {
                 http_response_code(401);
